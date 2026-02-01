@@ -18,6 +18,7 @@ import malilib.util.data.tag.ListData;
 import malilib.util.data.tag.util.DataTypeUtils;
 import malilib.util.game.MinecraftVersion;
 import malilib.util.position.BlockPos;
+import malilib.util.position.BlockPos.MutBlockPos;
 import malilib.util.position.Vec3d;
 import malilib.util.position.Vec3i;
 import malilib.util.world.BlockState;
@@ -179,6 +180,7 @@ public class VanillaSchematic extends BaseSchematic
         // Use a fresh palette to re-assign fresh increasing IDs without gaps
         Palette<BlockState> palette = new NonResizingHashMapPalette<>(1024);
         ListData blockList = new ListData(Constants.NBT.TAG_COMPOUND);
+        MutBlockPos mutablePos = new MutBlockPos();
 
         if (container instanceof SparseBlockContainer)
         {
@@ -190,7 +192,7 @@ public class VanillaSchematic extends BaseSchematic
                 int y = SparseBlockContainer.getYFromLong(pos);
                 int z = SparseBlockContainer.getZFromLong(pos);
 
-                this.writeBlockToList(x, y, z, palette.idFor(state), blockList, blockEntityMap);
+                this.writeBlockToList(x, y, z, palette.idFor(state), blockList, blockEntityMap, mutablePos);
             });
         }
         else
@@ -214,7 +216,7 @@ public class VanillaSchematic extends BaseSchematic
 
                         if (state != ignore)
                         {
-                            this.writeBlockToList(x, y, z, palette.idFor(state), blockList, blockEntityMap);
+                            this.writeBlockToList(x, y, z, palette.idFor(state), blockList, blockEntityMap, mutablePos);
                         }
                     }
                 }
@@ -227,19 +229,21 @@ public class VanillaSchematic extends BaseSchematic
         data.put("blocks", blockList);
     }
 
-    protected void writeBlockToList(int x, int y, int z, int stateId, ListData list, Map<BlockPos, CompoundData> blockEntityMap)
+    protected void writeBlockToList(int x, int y, int z, int stateId, ListData list,
+                                    Map<BlockPos, CompoundData> blockEntityMap,
+                                    MutBlockPos mutablePos)
     {
         CompoundData blockTag = new CompoundData();
-        BlockPos pos = new BlockPos(x, y, z);
+        mutablePos.set(x, y, z);
 
-        DataTypeUtils.writeVec3iToListTag(blockTag, "pos", pos);
+        DataTypeUtils.writeVec3iToListTag(blockTag, "pos", mutablePos);
         blockTag.putInt("state", stateId);
 
-        CompoundData beTag = blockEntityMap.get(pos);
+        CompoundData beTag = blockEntityMap.get(mutablePos);
 
         if (beTag != null)
         {
-            blockTag.put("nbt", beTag);
+            blockTag.put("nbt", beTag.copy());
         }
 
         list.add(blockTag);
